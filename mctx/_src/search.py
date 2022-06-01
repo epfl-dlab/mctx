@@ -166,7 +166,7 @@ def simulate(
         depth=depth,
         is_continuing=is_continuing)
 
-  node_index = jnp.array(Tree.ROOT_INDEX, dtype=jnp.int32)
+  node_index = tree.root_index
   depth = jnp.zeros((), dtype=tree.children_prior_logits.dtype)
   initial_state = _SimulationState(
       rng_key=rng_key,
@@ -254,13 +254,18 @@ def backward(
   """
 
   def cond_fun(loop_state):
-    _, _, index = loop_state
-    return index != Tree.ROOT_INDEX
+    tree, _, index = loop_state
+    # TODO does this comparison work? What when some indices are -1?
+    return index != tree.root_index
 
   def body_fun(loop_state):
     # Here we update the value of our parent, so we start by reversing.
     tree, leaf_value, index = loop_state
+
+    # TODO: parent can go negative (i.e. attain -1), not sure how it is handled.
+    #  Perhaps the last node (the one with index -1) is used as a dummy sink? Perhaps there is some clipping?
     parent = tree.parents[index]
+
     count = tree.node_visits[parent]
     action = tree.action_from_parent[index]
     reward = tree.children_rewards[parent, action]
@@ -348,6 +353,7 @@ def instantiate_tree_from_root(
   chex.assert_shape(root.value, [batch_size])
   num_nodes = num_simulations + 1
   data_dtype = root.value.dtype
+  batch = (batch_size,)
   batch_node = (batch_size, num_nodes)
   batch_node_action = (batch_size, num_nodes, num_actions)
 
@@ -356,6 +362,7 @@ def instantiate_tree_from_root(
 
   # Create a new empty tree state and fill its root.
   tree = Tree(
+      root_index=jnp.full(batch, Tree.INITIAL_ROOT_INDEX, dtype=jnp.int32),
       node_visits=jnp.zeros(batch_node, dtype=jnp.int32),
       raw_values=jnp.zeros(batch_node, dtype=data_dtype),
       node_values=jnp.zeros(batch_node, dtype=data_dtype),
@@ -374,7 +381,6 @@ def instantiate_tree_from_root(
       root_invalid_actions=root_invalid_actions,
       extra_data=extra_data)
 
-  root_index = jnp.full([batch_size], Tree.ROOT_INDEX)
   tree = update_tree_node(
-      tree, root_index, root.prior_logits, root.value, root.embedding)
+      tree, tree.root_index, root.prior_logits, root.value, root.embedding)
   return tree

@@ -153,13 +153,18 @@ class TreeTest(parameterized.TestCase):
   # pylint: disable=line-too-long
   @parameterized.named_parameters(
       ("muzero_norescale",
-       "../mctx/_src/tests/test_data/muzero_tree.json"),
+       "test_data/muzero_tree.json"),
       ("muzero_qtransform",
-       "../mctx/_src/tests/test_data/muzero_qtransform_tree.json"),
+       "test_data/muzero_qtransform_tree.json"),
       ("gumbel_muzero_norescale",
-       "../mctx/_src/tests/test_data/gumbel_muzero_tree.json"),
+       "test_data/gumbel_muzero_tree.json"),
       ("gumbel_muzero_reward",
-       "../mctx/_src/tests/test_data/gumbel_muzero_reward_tree.json"))
+       "test_data/gumbel_muzero_reward_tree.json"),
+      ("muzero_for_action_sequence_norescale",
+       "test_data/muzero_for_action_sequence_tree.json"),
+      ("muzero_for_action_sequence_qtransform",
+       "test_data/muzero_for_action_sequence_qtransform_tree.json"),
+  )
   # pylint: enable=line-too-long
   def test_tree(self, tree_data_path):
     with open(tree_data_path, "rb") as fd:
@@ -172,6 +177,7 @@ class TreeTest(parameterized.TestCase):
     policy_fn = dict(
         gumbel_muzero=mctx.gumbel_muzero_policy,
         muzero=mctx.muzero_policy,
+        muzero_for_action_sequence=mctx.muzero_policy_for_action_sequence,
     )[tree["algorithm"]]
 
     env_config = tree["env_config"]
@@ -189,6 +195,9 @@ class TreeTest(parameterized.TestCase):
     invalid_actions = np.zeros([batch_size, num_actions])
     invalid_actions[1, 1:] = 1
     invalid_actions[2, 2:] = 1
+    if tree["algorithm"] == "muzero_for_action_sequence":
+      invalid_actions = None  # muzero_for_action_sequence does not support invalid_actions
+
 
     def run_policy():
       return policy_fn(
