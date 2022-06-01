@@ -254,13 +254,18 @@ def backward(
   """
 
   def cond_fun(loop_state):
-    _, _, index = loop_state
+    tree, _, index = loop_state
+    # TODO does this comparison work? What when some indices are -1?
     return index != tree.root_index
 
   def body_fun(loop_state):
     # Here we update the value of our parent, so we start by reversing.
     tree, leaf_value, index = loop_state
+
+    # TODO: parent can go negative (i.e. attain -1), not sure how it is handled.
+    #  Perhaps the last node (the one with index -1) is used as a dummy sink? Perhaps there is some clipping?
     parent = tree.parents[index]
+
     count = tree.node_visits[parent]
     action = tree.action_from_parent[index]
     reward = tree.children_rewards[parent, action]
