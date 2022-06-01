@@ -25,6 +25,7 @@ from mctx._src import base
 from mctx._src import qtransforms
 from mctx._src import search
 from mctx._src import seq_halving
+from mctx._src.search import batch_update
 
 
 def muzero_policy(
@@ -259,12 +260,25 @@ def muzero_policy_for_action_sequence(
         _get_logits_from_probs(action_weights), temperature)
     action = jax.random.categorical(rng_key, action_logits)
 
+    # Make the new action and update the root
+    # TODO refactor/simplify the updating of the root index
     def update_new_root_index(batch_idx, new_root_index):
       return new_root_index.at[batch_idx].set(
         tree.children_index[batch_idx, tree.root_index[batch_idx], action[batch_idx]])
     new_root_index = jax.lax.fori_loop(0, batch_size, update_new_root_index,
                                        jnp.full_like(tree.root_index, -1))
-    tree = tree.replace(root_index=tree.root_index.at[:].set(new_root_index))
+
+    tree = tree.replace(
+      root_index=tree.root_index.at[:].set(new_root_index),
+      # Parents of the root are set to Tree.NO_PARENT
+      parents=batch_update(tree.parents, jnp.full((batch_size,), Tree.NO_PARENT), new_root_index),
+    )
+
+    # TODO updating only the root might not be enough.
+    #  Should parent ids be updated for the root nodes?
+
+    # TODO Will qtransforms know how to deal with the updated root?
+
     performed_actions = performed_actions.at[:, generated_action].set(action)
     max_depth -= 1
 
