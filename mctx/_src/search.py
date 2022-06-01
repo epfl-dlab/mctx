@@ -166,14 +166,12 @@ def simulate(
         depth=depth,
         is_continuing=is_continuing)
 
-  node_index = jnp.array(Tree.INITIAL_ROOT_INDEX, dtype=jnp.int32)
-  # node_index = tree.root_index
+  node_index = tree.root_index
   depth = jnp.zeros((), dtype=tree.children_prior_logits.dtype)
   initial_state = _SimulationState(
       rng_key=rng_key,
       node_index=tree.NO_PARENT,
       action=tree.NO_PARENT,
-      # action=jnp.full(node_index.shape, tree.NO_PARENT, dtype=jnp.int32),
       next_node_index=node_index,
       depth=depth,
       is_continuing=jnp.array(True))
