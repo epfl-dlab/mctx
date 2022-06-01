@@ -220,7 +220,7 @@ def muzero_policy_for_action_sequence(
   batch_size = root.value.shape[0]
   batch_range = jnp.arange(batch_size)
   if max_depth is None:
-    max_depth = num_simulations
+    max_depth = num_simulations * num_actions_to_generate
   if invalid_actions is None:
     invalid_actions = jnp.zeros_like(root.prior_logits)
 
