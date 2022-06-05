@@ -186,6 +186,15 @@ def muzero_policy_for_action_sequence(
       " actions? 2. Where to fetch invalid_actions of non-root nodes during"
       " the search?")
 
+  # TODO
+  # batch_size = root.value.shape[0]
+  # if batch_size > 1:
+  #   raise NotImplementedError(
+  #     "Only `batch_size=1` is supported at the moment. To support different"
+  #     " batch sizes, the search.backward function needs to be verified/updated"
+  #     " to properly move up the tree and stop at the root when the batches"
+  #     " of expanded nodes are at different depths.")
+
   from mctx import Tree
   from mctx._src.search import simulate, expand, backward, instantiate_tree_from_root
 

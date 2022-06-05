@@ -60,7 +60,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
   )
   def test_batch_1_step(self, qtransform):
-    policy_output = self._run(3, 10, 1, qtransform)
+    policy_output = self._run(3, 10, 1, qtransform, f"/tmp/muzero-for-action-sequence-bs3-1x10-{qtransform}.png")
     print(policy_output)
 
   @parameterized.named_parameters(
@@ -68,7 +68,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
   )
   def test_batch_3_steps(self, qtransform):
-    policy_output = self._run(3, 50, 3, qtransform)
+    policy_output = self._run(3, 50, 3, qtransform, f"/tmp/muzero-for-action-sequence-bs3-3x50-{qtransform}.png")
     print(policy_output)
 
   def _run(self, batch_size, num_simulations, num_actions_to_generate,
