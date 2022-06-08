@@ -26,6 +26,7 @@ from mctx._src.base import RootFnOutput
 from mctx._src.policies import gumbel_muzero_policy
 from mctx._src.policies import muzero_policy
 from mctx._src.policies import muzero_policy_for_action_sequence
+from mctx._src.qtransforms import qtransform_noop
 from mctx._src.qtransforms import qtransform_by_min_max
 from mctx._src.qtransforms import qtransform_by_parent_and_siblings
 from mctx._src.qtransforms import qtransform_completed_by_mix_value
@@ -48,6 +49,7 @@ __all__ = (
     "muzero_action_selection",
     "muzero_policy",
     "muzero_policy_for_action_sequence",
+    "qtransform_noop",
     "qtransform_by_min_max",
     "qtransform_by_parent_and_siblings",
     "qtransform_completed_by_mix_value",

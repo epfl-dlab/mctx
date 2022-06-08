@@ -21,6 +21,22 @@ import jax.numpy as jnp
 from mctx._src import tree as tree_lib
 
 
+def qtransform_noop(
+    tree: tree_lib.Tree,
+    node_index: chex.Numeric,
+) -> chex.Array:
+  """Returns Q-values without any transformations.
+
+  Args:
+    tree: _unbatched_ MCTS tree state.
+    node_index: scalar index of the parent node.
+
+  Returns:
+    Non-transformed Q-values. Shape `[num_actions]`.
+  """
+  chex.assert_shape(node_index, ())
+  return tree.qvalues(node_index)
+
 def qtransform_by_min_max(
     tree: tree_lib.Tree,
     node_index: chex.Numeric,

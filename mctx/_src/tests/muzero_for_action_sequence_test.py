@@ -18,6 +18,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_1_step(self, qtransform):
     policy_output = self._run(1, 10, 1, qtransform, f"/tmp/muzero-for-action-sequence-1x10-{qtransform}.png")
@@ -26,6 +27,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_2_steps(self, qtransform):
     policy_output = self._run(1, 10, 2, qtransform, f"/tmp/muzero-for-action-sequence-2x10-{qtransform}.png")
@@ -34,6 +36,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_3_steps(self, qtransform):
     policy_output = self._run(1, 10, 3, qtransform, f"/tmp/muzero-for-action-sequence-3x10-{qtransform}.png")
@@ -42,6 +45,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_4_steps(self, qtransform):
     policy_output = self._run(1, 10, 4, qtransform, f"/tmp/muzero-for-action-sequence-3x10-{qtransform}.png")
@@ -50,6 +54,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_5_steps(self, qtransform):
     policy_output = self._run(1, 10, 5, qtransform, f"/tmp/muzero-for-action-sequence-5x10-{qtransform}.png")
@@ -66,6 +71,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
   )
   def test_batch_3_steps(self, qtransform):
     policy_output = self._run(3, 50, 3, qtransform, f"/tmp/muzero-for-action-sequence-bs3-3x50-{qtransform}.png")
@@ -94,6 +100,12 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
     elif qtransform == "qtransform_by_parent_and_siblings":
       env_config = {
         "discount": 0.997,
+        "zero_reward": False
+      }
+      qtransform_kwargs = {}
+    elif qtransform == "qtransform_noop":
+      env_config = {
+        "discount": 1,
         "zero_reward": False
       }
       qtransform_kwargs = {}
