@@ -52,6 +52,8 @@ RecurrentFn = Callable[
     [Params, chex.PRNGKey, Action, RecurrentState],
     Tuple[RecurrentFnOutput, RecurrentState]]
 
+StoppingCriteriaFn = Callable[[RecurrentState], bool]
+
 
 # The search takes as input an initial set of predictions made directly
 # from the raw data. These predictions are made by a `RootFn` with signature:

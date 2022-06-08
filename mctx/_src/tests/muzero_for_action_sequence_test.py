@@ -7,6 +7,7 @@ from absl import logging
 from absl.testing import parameterized
 
 import mctx
+from mctx import PolicyOutput
 from mctx._src.tests.tree_test import _prepare_root, _prepare_recurrent_fn
 
 
@@ -15,6 +16,21 @@ from mctx._src.tests.tree_test import _prepare_root, _prepare_recurrent_fn
 # config.update('jax_disable_jit', True)
 
 class MuzeroForActionSequenceTest(parameterized.TestCase):
+  @parameterized.named_parameters(
+    ("qtransform_by_min_max", "qtransform_by_min_max"),
+    ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
+    ("qtransform_noop", "qtransform_noop"),
+  )
+  def test_stopping_criteria(self, qtransform):
+    num_actions = 10
+    policy_output = self._run(1, 5, num_actions, qtransform, f"/tmp/muzero-for-action-sequence-1x10-{qtransform}.png",
+                              stopping_criteria_fn=lambda x: True)
+    print(policy_output)
+
+    # Assert that all actions except the first are equal to -1
+    assert (policy_output.action[:, 0] != -1).all()
+    assert (policy_output.action[:, 1:] == -1).all()
+
   @parameterized.named_parameters(
     ("qtransform_by_min_max", "qtransform_by_min_max"),
     ("qtransform_by_parent_and_siblings", "qtransform_by_parent_and_siblings"),
@@ -78,7 +94,7 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
     print(policy_output)
 
   def _run(self, batch_size, num_simulations, num_actions_to_generate,
-           qtransform, draw_graph_path=None):
+           qtransform, draw_graph_path=None, stopping_criteria_fn=None) -> PolicyOutput:
     num_actions = 82
 
     algorithm_config = {
@@ -87,6 +103,8 @@ class MuzeroForActionSequenceTest(parameterized.TestCase):
       "pb_c_base": 19652,
       "pb_c_init": 1.25,
     }
+    if stopping_criteria_fn is not None:
+      algorithm_config["stopping_criteria_fn"] = stopping_criteria_fn
 
     if qtransform == "qtransform_by_min_max":
       env_config = {

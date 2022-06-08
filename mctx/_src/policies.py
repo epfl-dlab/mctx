@@ -125,6 +125,7 @@ def muzero_policy_for_action_sequence(
     root: base.RootFnOutput,
     recurrent_fn: base.RecurrentFn,
     num_simulations: int,
+    stopping_criteria_fn: base.StoppingCriteriaFn = lambda x: False,
     invalid_actions: Optional[chex.Array] = None,
     max_depth: Optional[int] = None,
     *,
@@ -153,6 +154,9 @@ def muzero_policy_for_action_sequence(
       actions retrieved by the simulation step, which takes as args
       `(params, rng_key, action, embedding)` and returns a `RecurrentFnOutput`
       and the new state embedding. The `rng_key` argument is consumed.
+    stopping_criteria_fn: a callable to be called when an action has been
+      generated, which takes as args `(embedding)` and returns a `bool`.
+      If True is returned, the generation processes stops.
     num_simulations: the number of simulations per generated action
     invalid_actions: a mask with invalid actions. Invalid actions
       have ones, valid actions have zeros in the mask. Shape `[B, num_actions]`.
@@ -186,7 +190,7 @@ def muzero_policy_for_action_sequence(
       " actions? 2. Where to fetch invalid_actions of non-root nodes during"
       " the search?")
 
-  # TODO
+  # TODO `batch_size>1` needs to be verified for correctness.
   # batch_size = root.value.shape[0]
   # if batch_size > 1:
   #   raise NotImplementedError(
@@ -234,7 +238,7 @@ def muzero_policy_for_action_sequence(
   if invalid_actions is None:
     invalid_actions = jnp.zeros_like(root.prior_logits)
 
-  def next_action_fun(sim, loop_state):
+  def generate_next_action_inner(sim, loop_state):
     rng_key, tree, max_depth = loop_state
     rng_key, simulate_key, expand_key = jax.random.split(rng_key, 3)
     # simulate is vmapped and expects batched rng keys.
@@ -254,13 +258,14 @@ def muzero_policy_for_action_sequence(
     loop_state = rng_key, tree, max_depth
     return loop_state
 
-  def body_fun(generated_action, loop_state):
-    rng_key, tree, max_depth, performed_actions = loop_state
+  def generate_next_action(generated_action, loop_state):
+    rng_key, tree, max_depth, performed_actions, stop_generating = loop_state
 
+    # Peform simulations and upate the tree.
     _, tree, _ = jax.lax.fori_loop(
       generated_action * num_simulations,
       (generated_action + 1) * num_simulations,
-      next_action_fun, (rng_key, tree, max_depth))
+      generate_next_action_inner, (rng_key, tree, max_depth))
 
     # Sampling the action to be performed proportionally to the visit counts.
     summary = tree.summary()
@@ -269,7 +274,7 @@ def muzero_policy_for_action_sequence(
         _get_logits_from_probs(action_weights), temperature)
     action = jax.random.categorical(rng_key, action_logits)
 
-    # Make the new action and update the root
+    # Make the new action and update the root.
     # TODO refactor/simplify the updating of the root index
     def update_new_root_index(batch_idx, new_root_index):
       return new_root_index.at[batch_idx].set(
@@ -277,22 +282,27 @@ def muzero_policy_for_action_sequence(
     new_root_index = jax.lax.fori_loop(0, batch_size, update_new_root_index,
                                        jnp.full_like(tree.root_index, -1))
 
+    # TODO Will qtransforms know how to deal with the updated root?
     tree = tree.replace(
       root_index=tree.root_index.at[:].set(new_root_index),
       # Parents of the root are set to Tree.NO_PARENT
       parents=batch_update(tree.parents, jnp.full((batch_size,), Tree.NO_PARENT), new_root_index),
     )
 
-    # TODO updating only the root might not be enough.
-    #  Should parent ids be updated for the root nodes?
-
-    # TODO Will qtransforms know how to deal with the updated root?
-
     performed_actions = performed_actions.at[:, generated_action].set(action)
     max_depth -= 1
 
-    loop_state = rng_key, tree, max_depth, performed_actions
+    # Call `stopping_criteria_fn` to determine if generation should be stopped.
+    root_embedding = jax.tree_map(
+      lambda x: x[batch_range, tree.root_index], tree.embeddings)
+    stop_generating = stopping_criteria_fn(root_embedding)
+
+    loop_state = rng_key, tree, max_depth, performed_actions, stop_generating
     return loop_state
+
+  def generate_next_action_stopping_wrapper(generated_action, loop_state):
+    _, _, _, _, stop_generating = loop_state
+    return jax.lax.cond(stop_generating, lambda _, x: x, generate_next_action, generated_action, loop_state)
 
   # Allocate all necessary storage.
   tree = instantiate_tree_from_root(
@@ -300,8 +310,12 @@ def muzero_policy_for_action_sequence(
     root_invalid_actions=invalid_actions, extra_data=extra_data)
 
   performed_actions = jnp.full((batch_size, num_actions_to_generate), -1, dtype=jnp.int32)
-  _, tree, _, performed_actions = jax.lax.fori_loop(
-      0, num_actions_to_generate, body_fun, (rng_key, tree, max_depth, performed_actions))
+  _, tree, _, performed_actions, _ = jax.lax.fori_loop(
+      lower=0,
+    upper=num_actions_to_generate,
+    body_fun=generate_next_action_stopping_wrapper,
+    init_val=(rng_key, tree, max_depth, performed_actions, False),
+  )
 
   return base.PolicyOutput(
       action=performed_actions,
