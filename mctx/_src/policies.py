@@ -290,19 +290,23 @@ def muzero_policy_for_action_sequence(
     )
 
     performed_actions = performed_actions.at[:, generated_action].set(action)
-    max_depth -= 1
 
     # Call `stopping_criteria_fn` to determine if generation should be stopped.
     root_embedding = jax.tree_map(
       lambda x: x[batch_range, tree.root_index], tree.embeddings)
     stop_generating = stopping_criteria_fn(root_embedding)
 
-    loop_state = rng_key, tree, max_depth, performed_actions, stop_generating
+    loop_state = rng_key, tree, max_depth - 1, performed_actions, stop_generating
     return loop_state
 
   def generate_next_action_stopping_wrapper(generated_action, loop_state):
-    _, _, _, _, stop_generating = loop_state
-    return jax.lax.cond(stop_generating, lambda _, x: x, generate_next_action, generated_action, loop_state)
+    _, _, max_depth, _, stop_generating = loop_state
+
+    # TODO is there a nicer way to crate the simple condition `stop_generating or max_depth==0`?
+    stop_generating_is_true_or_max_depth_is_zero = jax.lax.cond(stop_generating, lambda: True, lambda: max_depth == 0)
+
+    return jax.lax.cond(stop_generating_is_true_or_max_depth_is_zero,
+                        lambda _, x: x, generate_next_action, generated_action, loop_state)
 
   # Allocate all necessary storage.
   tree = instantiate_tree_from_root(
@@ -311,7 +315,7 @@ def muzero_policy_for_action_sequence(
 
   performed_actions = jnp.full((batch_size, num_actions_to_generate), -1, dtype=jnp.int32)
   _, tree, _, performed_actions, _ = jax.lax.fori_loop(
-      lower=0,
+    lower=0,
     upper=num_actions_to_generate,
     body_fun=generate_next_action_stopping_wrapper,
     init_val=(rng_key, tree, max_depth, performed_actions, False),
