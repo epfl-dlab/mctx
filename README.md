@@ -1,3 +1,10 @@
+This codebase is a fork of [deepmind/mctx](https://github.com/deepmind/mctx),
+extended to add support for the generation of a sequence of actions.
+See [epfl-dlab/understanding-decoding](https://github.com/epfl-dlab/understanding-decoding)
+for the downstream task of decoding text during text generation from transformers.
+
+<p align="center"> ✱✱✱ </p>
+
 # Mctx: MCTS-in-JAX
 
 Mctx is a library with a [JAX](https://github.com/google/jax)-native
